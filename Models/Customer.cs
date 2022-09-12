@@ -18,7 +18,7 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
         public string Email { get; set; }
 
         public DateTime CreatedAt { get; set; }
-        public DateTime deletedAt { get; set; }
+        public DateTime DeletedAt { get; set; }
 
         public Customer(int id)
         {
@@ -90,31 +90,146 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
 
                 SqlDataReader reader = cmd.ExecuteReader();
 
-                while(reader.Read())
+                if(reader.HasRows)
                 {
-                    if(!reader.IsDBNull(1))
+                    while (reader.Read())
                     {
-                        this.FirstName = reader.GetString(1);
+                        if (!reader.IsDBNull(1))
+                        {
+                            this.FirstName = reader.GetString(1);
+                        }
+
+                        if (!reader.IsDBNull(2))
+                        {
+                            this.LastName = reader.GetString(2);
+                        }
+
+                        this.Email = reader.GetString(3);
+                        this.CreatedAt = reader.GetDateTime(4);
+
+                        if (!reader.IsDBNull(5))
+                        {
+                            this.DeletedAt = reader.GetDateTime(5);
+                        }
                     }
-
-                    this.LastName = reader.GetString(2);
-                    this.Email = reader.GetString(3);
-                    this.CreatedAt = reader.GetDateTime(4);
-
+                    return this;
                 }
-
-                return this;
+                else
+                {
+                    throw new Exception($"No entry exist in data base for {this.GetType().FullName} with #ID : {this.Id}");
+                }
             }
         }
 
         public Customer Insert()
         {
-            throw new NotImplementedException();
+            if(this.Id == 0)
+            {
+                throw new Exception($"Id value is 0. Cannot continue with Insert() method for {this.GetType().FullName}");
+            }
+
+            using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+            {
+                DateTime createTime = DateTime.Now;
+
+                string statement = $"INSERT INTO {DATABASE_TABLE_NAME} (firstName, lastName, email, createdAt) VALUES (@firstName, @lastName, @email, @createdAt); SELECT CAST(SCOPE_IDENTITY() AS int);";
+                SqlCommand cmd = connection.CreateCommand();
+                cmd.CommandText = statement;
+
+                SqlParameter param_firstName = cmd.CreateParameter();
+                param_firstName.ParameterName = "@firstName";
+                param_firstName.DbType = DbType.String;
+                if(this.FirstName != null)
+                {
+                    param_firstName.Value = this.FirstName;
+                }
+                else
+                {
+                    param_firstName.Value = DBNull.Value;
+                }
+                cmd.Parameters.Add(param_firstName);
+
+                SqlParameter param_lastName = cmd.CreateParameter();
+                param_lastName.ParameterName = "@lastName";
+                param_lastName.DbType = DbType.String;
+                if(this.LastName != null)
+                {
+                    param_lastName.Value = this.LastName;
+                }
+                else
+                {
+                    param_lastName.Value = DBNull.Value;
+                }
+                cmd.Parameters.Add(param_lastName);
+
+                SqlParameter param_email = cmd.CreateParameter();
+                param_email.ParameterName = "@email";
+                param_email.DbType = DbType.String;
+                param_email.Value = this.Email;
+                cmd.Parameters.Add(param_email);
+
+                SqlParameter param_createdAt = cmd.CreateParameter();
+                param_createdAt.ParameterName = "@createdAt";
+                param_createdAt.DbType = DbType.DateTime;
+                param_createdAt.Value = this.CreatedAt;
+                cmd.Parameters.Add(param_createdAt);
+
+                connection.Open();
+                this.Id = (Int32)cmd.ExecuteScalar();
+                this.CreatedAt = createTime;
+
+                return this;
+            }
+
         }
 
         public Customer Update()
         {
-            throw new NotImplementedException();
+            if (this.Id == 0)
+            {
+                throw new Exception($"Id value is 0. Cannot continue with Update() method for {this.GetType().FullName}");
+            }
+
+            using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+            {
+                string statement = $"UPDATE {DATABASE_TABLE_NAME} SET firstName=@firstName, lastName=@lastName, email=@email, createdAt=@createdAt WHERE id = @id";
+                SqlCommand cmd = connection.CreateCommand();
+                cmd.CommandText = statement;
+
+                SqlParameter param_firstName = cmd.CreateParameter();
+                param_firstName.ParameterName = "@firstName";
+                param_firstName.DbType = DbType.String;
+                if (this.FirstName != null)
+                {
+                    param_firstName.Value = this.FirstName;
+                }
+                else
+                {
+                    param_firstName.Value = DBNull.Value;
+                }
+                cmd.Parameters.Add(param_firstName);
+
+                SqlParameter param_lastName = cmd.CreateParameter();
+                param_lastName.ParameterName = "@lastName";
+                param_lastName.DbType = DbType.String;
+                if (this.LastName != null)
+                {
+                    param_lastName.Value = this.LastName;
+                }
+                else
+                {
+                    param_lastName.Value = DBNull.Value;
+                }
+                cmd.Parameters.Add(param_lastName);
+
+                SqlParameter param_email = cmd.CreateParameter();
+                param_email.ParameterName = "@email";
+                param_email.DbType = DbType.String;
+                param_email.Value = this.Email;
+                cmd.Parameters.Add(param_email);
+
+
+            }
         }
     }
 }
