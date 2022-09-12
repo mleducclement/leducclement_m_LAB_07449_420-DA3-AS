@@ -6,7 +6,14 @@ using System.Threading.Tasks;
 
 namespace leducclement_m_LAB_07449_420_DA3_AS.Models
 {
-    internal interface IModel
-    {
+    public interface IModel<TModel> where TModel : IModel<TModel> {
+
+        TModel Insert();
+
+        TModel GetById();
+
+        TModel Update();
+
+        void Delete();
     }
 }
