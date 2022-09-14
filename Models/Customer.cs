@@ -12,24 +12,78 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
     {
         private static readonly string DATABASE_TABLE_NAME = "dbo.Customer";
 
-        public int Id { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public string Email { get; set; }
+        //Fields
+
+        private string _firstName;
+        private string _lastName;
+        private string _emaill;
+
+        public int Id { get; protected set; }
+        public string FirstName
+        {
+            get { return this._firstName; }
+            set
+            {
+                if (value.Length > 50)
+                {
+                    throw new ArgumentException($"Value for field FirstName of {this.GetType().FullName} must contain 50 or fewer characters. Current value is {value.Length}");
+                }
+
+                this._firstName = value;
+            }
+        }
+
+        public string LastName
+        {
+            get { return this._lastName; }
+            set
+            {
+                if (value.Length > 50)
+                {
+                    throw new ArgumentException($"Value for field LastName of {this.GetType().FullName} must contain 50 or fewer characters. Current value is {value.Length}");
+                }
+
+                this._lastName = value;
+            }
+        }
+        public string Email {
+            get { return this._emaill; }
+            set
+            {
+                if (value.Length > 128 || )
+                {
+                    throw new ArgumentException($"Value for field Email of {this.GetType().FullName} must contain 128 or fewer characters. Current value is {value.Length}");
+                }
+
+                if (String.IsNullOrEmpty(this.Email.Trim()))
+                {
+                    throw new ArgumentException($"Value for field Email of {this.GetType().FullName} cannot be empty.");
+                }
+
+                this._firstName = value;
+            }
+        }
 
         public DateTime CreatedAt { get; set; }
         public DateTime DeletedAt { get; set; }
+
+        public Customer() { }
 
         public Customer(int id)
         {
             this.Id = id;
         }
 
-        public Customer(int id, string firstName, string lastName)
+        public Customer(string email)
         {
-            this.Id = id;
+            this.Email = email;
+        }
+
+        public Customer(string firstName, string lastName, string email)
+        {
             this.FirstName = firstName;
             this.LastName = lastName;
+            this.Email = email;
         }
 
         public void Delete()
@@ -39,11 +93,11 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 throw new Exception($"Id value is 0. Cannot continue with Delete() method for {this.GetType().FullName}");
             }
 
-            // USING ALLOWS TO CREATE A CONNECTION AND NOT WORRY ABOUT DESTROING IT AFTERWARDS
+            // USING ALLOWS TO CREATE A CONNECTION AND NOT WORRY ABOUT DESTROYING IT AFTERWARDS
             using(SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
             {
                 // SQL STATEMENT TO DELETE ENTRY FROM DATABASE
-                string statement = $"DELETE FROM {DATABASE_TABLE_NAME} WHERE Id = @id";
+                string statement = $"DELETE FROM {DATABASE_TABLE_NAME} WHERE Id = @id;";
                 // CREATE T-SQL REPRESENTATION IN C# as SqlCommand
                 SqlCommand cmd = connection.CreateCommand();
                 // SET TEXT OF SqlCommand INSTANCE TO THE statement STRING
@@ -62,6 +116,7 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 // WHY NOT USE if(affectedRows == 0) or : if(affectedRows <= 0) ?
                 if(!((affectedRows) > 0))
                 {
+                    // No affected rows: no deletion occured -> row with matching Id not found
                     throw new Exception($"Could not delete {this.GetType().FullName}: no database entry found for ID# : {this.Id}");
                 }
             }
@@ -71,12 +126,13 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
         {
             if (this.Id == 0)
             {
-                throw new Exception($"Id value is 0. Cannot continue with Delete() method for {this.GetType().FullName}");
+                // Id has not been set, it is initialized by default at 0;
+                throw new Exception($"Id value is 0. Cannot continue with GetById() method for {this.GetType().FullName}");
             }
 
             using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
             {
-                string statement = $"SELECT FROM {DATABASE_TABLE_NAME} WHERE Id = @id";
+                string statement = $"SELECT FROM {DATABASE_TABLE_NAME} WHERE Id = @id;";
                 SqlCommand cmd = connection.CreateCommand();
                 cmd.CommandText= statement;
 
@@ -94,6 +150,7 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 {
                     while (reader.Read())
                     {
+                        // firstName and lastName can be NULL in the database
                         if (!reader.IsDBNull(1))
                         {
                             this.FirstName = reader.GetString(1);
@@ -171,7 +228,7 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 SqlParameter param_createdAt = cmd.CreateParameter();
                 param_createdAt.ParameterName = "@createdAt";
                 param_createdAt.DbType = DbType.DateTime;
-                param_createdAt.Value = this.CreatedAt;
+                param_createdAt.Value = createTime;
                 cmd.Parameters.Add(param_createdAt);
 
                 connection.Open();
@@ -192,7 +249,7 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
 
             using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
             {
-                string statement = $"UPDATE {DATABASE_TABLE_NAME} SET firstName=@firstName, lastName=@lastName, email=@email, createdAt=@createdAt WHERE id = @id";
+                string statement = $"UPDATE {DATABASE_TABLE_NAME} SET firstName=@firstName, lastName=@lastName, email=@email, createdAt=@createdAt WHERE id = @id;";
                 SqlCommand cmd = connection.CreateCommand();
                 cmd.CommandText = statement;
 
@@ -228,7 +285,17 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 param_email.Value = this.Email;
                 cmd.Parameters.Add(param_email);
 
+                connection.Open();
+                // EXECUTE A NON-QUERY STATEMENT IN T-SQL (DELETE)
+                int affectedRows = cmd.ExecuteNonQuery();
 
+                // WHY NOT USE if(affectedRows == 0) or : if(affectedRows <= 0) ?
+                if (!((affectedRows) > 0))
+                {
+                    throw new Exception($"Could not update {this.GetType().FullName}: no database entry found for ID# : {this.Id}");
+                }
+
+                return this;
             }
         }
     }
