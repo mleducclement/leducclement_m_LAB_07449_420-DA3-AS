@@ -17,7 +17,6 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
         private string _shippingAddress;
 
         // Properties
-
         public int Id { get; protected set; }
         public Customer Customer { get; set; }
         public string BillingAddress { get; set; }
@@ -136,9 +135,9 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
 
         public ShoppingCart Insert()
         {
-            if (this.Id == 0)
+            if (this.Id > 0)
             {
-                throw new Exception($"Id value is 0. Cannot continue with Insert() method for {this.GetType().FullName}");
+                throw new Exception($"Id value is not 0. Cannot continue with Insert() method for {this.GetType().FullName}");
             }
 
             using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())

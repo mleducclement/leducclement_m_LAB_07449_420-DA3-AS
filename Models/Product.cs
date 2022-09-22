@@ -15,7 +15,7 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
         // Fields
         private string _name;
 
-        public int Id { get; protected set; }
+        private int Id { get; set; } = 0;
         public long GTINCode { get; set; }
         public int QtyInStock { get; set; }
         public string Name {
@@ -33,14 +33,10 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
         public DateTime CreatedAt { get; set; }
         public DateTime DeletedAt { get; set; }
 
-        public Product(int id)
-        {
-            this.Id = id;
-        }
+        public Product() { }
 
-        public Product(int id, long gtinCode, int qtyInStock, string name, string description)
+        public Product(long gtinCode, int qtyInStock, string name, string description)
         {
-            this.Id = id;
             this.GTINCode = gtinCode;
             this.QtyInStock = qtyInStock;
             this.Name = name;
@@ -141,9 +137,10 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
 
         public Product Insert()
         {
-            if (this.Id == 0)
+            // WHY NOT REMOVE THE ID SETTER ALTOGETHER AND MAKE IT PREINITIALIZED VALUE 0 INSTEAD ?
+            if (this.Id > 0)
             {
-                throw new Exception($"Id value is 0. Cannot continue with Insert() method for {this.GetType().FullName}");
+                throw new Exception($"Id value is not 0. Cannot continue with Insert() method for {this.GetType().FullName}");
             }
 
             using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
