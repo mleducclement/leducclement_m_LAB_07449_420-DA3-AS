@@ -28,9 +28,9 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
 
         // Constructors
 
-        public ShoppingCart()
+        public ShoppingCart(int id)
         {
-
+            this.Id = id;
         }
 
         public ShoppingCart(Customer customer, string billingAddress, string shippingAddress)
@@ -38,6 +38,13 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
             Customer = customer;
             BillingAddress = billingAddress;
             ShippingAddress = shippingAddress;
+        }
+
+        public static ShoppingCart GetById(int id)
+        {
+            ShoppingCart cart = new ShoppingCart(id);
+            cart.GetById();
+            return cart;
         }
 
         public void Delete()

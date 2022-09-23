@@ -33,7 +33,9 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
         public DateTime CreatedAt { get; set; }
         public DateTime DeletedAt { get; set; }
 
-        public Product() { }
+        public Product(int id) {
+            this.Id = id;
+        }
 
         public Product(long gtinCode, int qtyInStock, string name, string description)
         {
@@ -41,6 +43,16 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
             this.QtyInStock = qtyInStock;
             this.Name = name;
             this.Description = description;
+        }
+
+        /// <summary>
+        /// Allows us to retrieve a product by its ID without having an instance of Product
+        /// </summary>
+        public static Product GetById(int id)
+        {
+            Product product = new Product(id);
+            product.GetById();
+            return product;
         }
 
         public void Delete()

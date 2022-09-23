@@ -16,7 +16,7 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
 
         private string _firstName;
         private string _lastName;
-        private string _emaill;
+        private string _email;
 
         public int Id { get; protected set; }
         public string FirstName
@@ -27,6 +27,11 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 if (value.Length > 50)
                 {
                     throw new ArgumentException($"Value for field FirstName of {this.GetType().FullName} must contain 50 or fewer characters. Current value is {value.Length}");
+                }
+
+                if (string.IsNullOrEmpty(this.LastName.Trim()))
+                {
+                    throw new ArgumentException($"Value for field FirstName of {this.GetType().FullName} cannot be empty.");
                 }
 
                 this._firstName = value;
@@ -43,14 +48,19 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                     throw new ArgumentException($"Value for field LastName of {this.GetType().FullName} must contain 50 or fewer characters. Current value is {value.Length}");
                 }
 
+                if(string.IsNullOrEmpty(this.LastName.Trim()))
+                {
+                    throw new ArgumentException($"Value for field LastName of {this.GetType().FullName} cannot be empty.");
+                }
+
                 this._lastName = value;
             }
         }
         public string Email {
-            get { return this._emaill; }
+            get { return this._email; }
             set
             {
-                if (value.Length > 128 || )
+                if (value.Length > 128)
                 {
                     throw new ArgumentException($"Value for field Email of {this.GetType().FullName} must contain 128 or fewer characters. Current value is {value.Length}");
                 }
@@ -74,16 +84,18 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
             this.Id = id;
         }
 
-        public Customer(string email)
-        {
-            this.Email = email;
-        }
-
         public Customer(string firstName, string lastName, string email)
         {
             this.FirstName = firstName;
             this.LastName = lastName;
             this.Email = email;
+        }
+
+        public static Customer GetById(int id)
+        {
+            Customer tempCustomer = new Customer(id);
+            tempCustomer.GetById();
+            return tempCustomer;
         }
 
         public void Delete()
@@ -196,7 +208,7 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 SqlParameter param_firstName = cmd.CreateParameter();
                 param_firstName.ParameterName = "@firstName";
                 param_firstName.DbType = DbType.String;
-                if(this.FirstName != null)
+                if(!string.IsNullOrEmpty(FirstName))
                 {
                     param_firstName.Value = this.FirstName;
                 }
@@ -209,7 +221,7 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 SqlParameter param_lastName = cmd.CreateParameter();
                 param_lastName.ParameterName = "@lastName";
                 param_lastName.DbType = DbType.String;
-                if(this.LastName != null)
+                if(!string.IsNullOrEmpty(LastName))
                 {
                     param_lastName.Value = this.LastName;
                 }
