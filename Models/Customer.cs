@@ -115,11 +115,11 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 // SET TEXT OF SqlCommand INSTANCE TO THE statement STRING
                 cmd.CommandText = statement;
 
-                SqlParameter param = cmd.CreateParameter();
-                param.ParameterName = "@id";
-                param.DbType = DbType.Int32;
-                param.Value = this.Id;
-                cmd.Parameters.Add(param);
+                SqlParameter param_id = cmd.CreateParameter();
+                param_id.ParameterName = "@id";
+                param_id.DbType = DbType.Int32;
+                param_id.Value = this.Id;
+                cmd.Parameters.Add(param_id);
 
                 connection.Open();
                 // EXECUTE A NON-QUERY STATEMENT IN T-SQL (DELETE)
@@ -148,11 +148,11 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 SqlCommand cmd = connection.CreateCommand();
                 cmd.CommandText= statement;
 
-                SqlParameter param = cmd.CreateParameter();
-                param.ParameterName = "@id";
-                param.DbType = DbType.Int32;
-                param.Value = this.Id;
-                cmd.Parameters.Add(param);
+                SqlParameter param_id = cmd.CreateParameter();
+                param_id.ParameterName = "@id";
+                param_id.DbType = DbType.Int32;
+                param_id.Value = this.Id;
+                cmd.Parameters.Add(param_id);
 
                 connection.Open();
 
