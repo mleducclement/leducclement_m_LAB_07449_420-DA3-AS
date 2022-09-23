@@ -218,7 +218,6 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 // EXECUTE A NON-QUERY STATEMENT IN T-SQL (DELETE)
                 int affectedRows = cmd.ExecuteNonQuery();
 
-                // WHY NOT USE if(affectedRows == 0) or : if(affectedRows <= 0) ?
                 if (affectedRows <= 0)
                 {
                     throw new Exception($"Could not update {this.GetType().FullName}: no database entry found for cartId : {this.CartId} and productId : {this.ProductId}");
@@ -260,7 +259,6 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 // EXECUTE A NON-QUERY STATEMENT IN T-SQL (DELETE)
                 int affectedRows = cmd.ExecuteNonQuery();
 
-                // WHY NOT USE if(affectedRows == 0) or : if(affectedRows <= 0) ?
                 if (affectedRows <= 0)
                 {
                     throw new Exception($"Could not delete {this.GetType().FullName}: no database entry found for cartId : {this.CartId} and productId : {this.ProductId}");
