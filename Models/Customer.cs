@@ -1,4 +1,5 @@
-﻿using System;
+﻿using leducclement_m_LAB_07449_420_DA3_AS.Utils;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -48,7 +49,7 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                     throw new ArgumentException($"Value for field LastName of {this.GetType().FullName} must contain 50 or fewer characters. Current value is {value.Length}");
                 }
 
-                if(string.IsNullOrEmpty(this.LastName.Trim()))
+                if (string.IsNullOrEmpty(this.LastName.Trim()))
                 {
                     throw new ArgumentException($"Value for field LastName of {this.GetType().FullName} cannot be empty.");
                 }
@@ -56,7 +57,8 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 this._lastName = value;
             }
         }
-        public string Email {
+        public string Email
+        {
             get { return this._email; }
             set
             {
@@ -100,41 +102,70 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
 
         public void Delete()
         {
+            using (SqlConnection connection = DbUtilsConnection.GetDefaultConnection())
+            {
+                this.ExecuteDeleteCommand(connection.CreateCommand());
+            }
+        }
+
+        public void Delete(SqlTransaction transaction)
+        {
+            SqlCommand cmd = transaction.Connection.CreateCommand();
+            cmd.Transaction = transaction;
+            this.ExecuteDeleteCommand(cmd);
+        }
+
+        private void ExecuteDeleteCommand(SqlCommand cmd)
+        {
             if (this.Id == 0)
             {
                 throw new Exception($"Id value is 0. Cannot continue with Delete() method for {this.GetType().FullName}");
             }
 
-            // USING ALLOWS TO CREATE A CONNECTION AND NOT WORRY ABOUT DESTROYING IT AFTERWARDS
-            using(SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+            string statement = $"DELETE FROM {DATABASE_TABLE_NAME} WHERE Id = @id;";
+            cmd.CommandText = statement;
+
+            SqlParameter param_id = cmd.CreateParameter();
+            param_id.ParameterName = "@id";
+            param_id.DbType = DbType.Int32;
+            param_id.Value = this.Id;
+            cmd.Parameters.Add(param_id);
+
+            if (cmd.Connection.State != ConnectionState.Open)
             {
-                // SQL STATEMENT TO DELETE ENTRY FROM DATABASE
-                string statement = $"DELETE FROM {DATABASE_TABLE_NAME} WHERE Id = @id;";
-                // CREATE T-SQL REPRESENTATION IN C# as SqlCommand
-                SqlCommand cmd = connection.CreateCommand();
-                // SET TEXT OF SqlCommand INSTANCE TO THE statement STRING
-                cmd.CommandText = statement;
+                cmd.Connection.Open();
+            }
 
-                SqlParameter param_id = cmd.CreateParameter();
-                param_id.ParameterName = "@id";
-                param_id.DbType = DbType.Int32;
-                param_id.Value = this.Id;
-                cmd.Parameters.Add(param_id);
+            // EXECUTE A NON-QUERY STATEMENT IN T-SQL (DELETE)
+            int affectedRows = cmd.ExecuteNonQuery();
 
-                connection.Open();
-                // EXECUTE A NON-QUERY STATEMENT IN T-SQL (DELETE)
-                int affectedRows = cmd.ExecuteNonQuery();
-
-                // WHY NOT USE if(affectedRows == 0) or : if(affectedRows <= 0) ?
-                if(!((affectedRows) > 0))
-                {
-                    // No affected rows: no deletion occured -> row with matching Id not found
-                    throw new Exception($"Could not delete {this.GetType().FullName}: no database entry found for ID# : {this.Id}");
-                }
+            // WHY NOT USE if(affectedRows == 0) or : if(affectedRows <= 0) ?
+            if (!((affectedRows) > 0))
+            {
+                // No affected rows: no deletion occured -> row with matching Id not found
+                throw new Exception($"Could not delete {this.GetType().FullName}: no database entry found for ID# : {this.Id}");
             }
         }
 
         public Customer GetById()
+        {
+            using (SqlConnection connection = DbUtilsConnection.GetDefaultConnection())
+            {
+                this.ExecuteGetByIdCommand(connection.CreateCommand());
+            }
+
+            return this;
+        }
+
+        public Customer GetById(SqlTransaction transaction)
+        {
+            SqlCommand cmd = transaction.Connection.CreateCommand();
+            cmd.Transaction = transaction;
+            this.ExecuteGetByIdCommand(cmd);
+            return this;
+        }
+
+        private Customer ExecuteGetByIdCommand(SqlCommand cmd)
         {
             if (this.Id == 0)
             {
@@ -142,173 +173,206 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 throw new Exception($"Id value is 0. Cannot continue with GetById() method for {this.GetType().FullName}");
             }
 
-            using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+            string statement = $"SELECT FROM {DATABASE_TABLE_NAME} WHERE Id = @id;";
+            cmd.CommandText = statement;
+
+            SqlParameter param_id = cmd.CreateParameter();
+            param_id.ParameterName = "@id";
+            param_id.DbType = DbType.Int32;
+            param_id.Value = this.Id;
+            cmd.Parameters.Add(param_id);
+
+            if (cmd.Connection.State != ConnectionState.Open)
             {
-                string statement = $"SELECT FROM {DATABASE_TABLE_NAME} WHERE Id = @id;";
-                SqlCommand cmd = connection.CreateCommand();
-                cmd.CommandText= statement;
+                cmd.Connection.Open();
+            }
 
-                SqlParameter param_id = cmd.CreateParameter();
-                param_id.ParameterName = "@id";
-                param_id.DbType = DbType.Int32;
-                param_id.Value = this.Id;
-                cmd.Parameters.Add(param_id);
+            SqlDataReader reader = cmd.ExecuteReader();
 
-                connection.Open();
-
-                SqlDataReader reader = cmd.ExecuteReader();
-
-                if(reader.HasRows)
+            if (reader.HasRows)
+            {
+                while (reader.Read())
                 {
-                    while (reader.Read())
+                    // firstName and lastName can be NULL in the database
+                    if (!reader.IsDBNull(1))
                     {
-                        // firstName and lastName can be NULL in the database
-                        if (!reader.IsDBNull(1))
-                        {
-                            this.FirstName = reader.GetString(1);
-                        }
-
-                        if (!reader.IsDBNull(2))
-                        {
-                            this.LastName = reader.GetString(2);
-                        }
-
-                        this.Email = reader.GetString(3);
-                        this.CreatedAt = reader.GetDateTime(4);
-
-                        if (!reader.IsDBNull(5))
-                        {
-                            this.DeletedAt = reader.GetDateTime(5);
-                        }
+                        this.FirstName = reader.GetString(1);
                     }
-                    return this;
+
+                    if (!reader.IsDBNull(2))
+                    {
+                        this.LastName = reader.GetString(2);
+                    }
+
+                    this.Email = reader.GetString(3);
+                    this.CreatedAt = reader.GetDateTime(4);
+
+                    if (!reader.IsDBNull(5))
+                    {
+                        this.DeletedAt = reader.GetDateTime(5);
+                    }
                 }
-                else
-                {
-                    throw new Exception($"No entry exist in data base for {this.GetType().FullName} with #ID : {this.Id}");
-                }
+                return this;
+            }
+            else
+            {
+                throw new Exception($"No entry exist in data base for {this.GetType().FullName} with #ID : {this.Id}");
             }
         }
 
         public Customer Insert()
         {
-            if(this.Id > 0)
+            using (SqlConnection connection = DbUtilsConnection.GetDefaultConnection())
+            {
+                this.ExecuteInsertCommand(connection.CreateCommand());
+            }
+
+            return this;
+        }
+
+        public Customer Insert(SqlTransaction transaction)
+        {
+            SqlCommand cmd = transaction.Connection.CreateCommand();
+            cmd.Transaction = transaction;
+            this.ExecuteInsertCommand(cmd);
+            return this;
+        }
+
+        private Customer ExecuteInsertCommand(SqlCommand cmd)
+        {
+            if (this.Id > 0)
             {
                 throw new Exception($"Id value is not 0. Cannot continue with Insert() method for {this.GetType().FullName}");
             }
 
-            using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+            DateTime createTime = DateTime.Now;
+
+            string statement = $"INSERT INTO {DATABASE_TABLE_NAME} (firstName, lastName, email, createdAt) VALUES (@firstName, @lastName, @email, @createdAt); SELECT CAST(SCOPE_IDENTITY() AS int);";
+            cmd.CommandText = statement;
+
+            SqlParameter param_firstName = cmd.CreateParameter();
+            param_firstName.ParameterName = "@firstName";
+            param_firstName.DbType = DbType.String;
+            if (!string.IsNullOrEmpty(FirstName))
             {
-                DateTime createTime = DateTime.Now;
+                param_firstName.Value = this.FirstName;
+            }
+            else
+            {
+                param_firstName.Value = DBNull.Value;
+            }
+            cmd.Parameters.Add(param_firstName);
 
-                string statement = $"INSERT INTO {DATABASE_TABLE_NAME} (firstName, lastName, email, createdAt) VALUES (@firstName, @lastName, @email, @createdAt); SELECT CAST(SCOPE_IDENTITY() AS int);";
-                SqlCommand cmd = connection.CreateCommand();
-                cmd.CommandText = statement;
+            SqlParameter param_lastName = cmd.CreateParameter();
+            param_lastName.ParameterName = "@lastName";
+            param_lastName.DbType = DbType.String;
+            if (!string.IsNullOrEmpty(LastName))
+            {
+                param_lastName.Value = this.LastName;
+            }
+            else
+            {
+                param_lastName.Value = DBNull.Value;
+            }
+            cmd.Parameters.Add(param_lastName);
 
-                SqlParameter param_firstName = cmd.CreateParameter();
-                param_firstName.ParameterName = "@firstName";
-                param_firstName.DbType = DbType.String;
-                if(!string.IsNullOrEmpty(FirstName))
-                {
-                    param_firstName.Value = this.FirstName;
-                }
-                else
-                {
-                    param_firstName.Value = DBNull.Value;
-                }
-                cmd.Parameters.Add(param_firstName);
+            SqlParameter param_email = cmd.CreateParameter();
+            param_email.ParameterName = "@email";
+            param_email.DbType = DbType.String;
+            param_email.Value = this.Email;
+            cmd.Parameters.Add(param_email);
 
-                SqlParameter param_lastName = cmd.CreateParameter();
-                param_lastName.ParameterName = "@lastName";
-                param_lastName.DbType = DbType.String;
-                if(!string.IsNullOrEmpty(LastName))
-                {
-                    param_lastName.Value = this.LastName;
-                }
-                else
-                {
-                    param_lastName.Value = DBNull.Value;
-                }
-                cmd.Parameters.Add(param_lastName);
+            SqlParameter param_createdAt = cmd.CreateParameter();
+            param_createdAt.ParameterName = "@createdAt";
+            param_createdAt.DbType = DbType.DateTime;
+            param_createdAt.Value = createTime;
+            cmd.Parameters.Add(param_createdAt);
 
-                SqlParameter param_email = cmd.CreateParameter();
-                param_email.ParameterName = "@email";
-                param_email.DbType = DbType.String;
-                param_email.Value = this.Email;
-                cmd.Parameters.Add(param_email);
-
-                SqlParameter param_createdAt = cmd.CreateParameter();
-                param_createdAt.ParameterName = "@createdAt";
-                param_createdAt.DbType = DbType.DateTime;
-                param_createdAt.Value = createTime;
-                cmd.Parameters.Add(param_createdAt);
-
-                connection.Open();
-                this.Id = (Int32)cmd.ExecuteScalar();
-                this.CreatedAt = createTime;
-
-                return this;
+            if (cmd.Connection.State != ConnectionState.Open)
+            {
+                cmd.Connection.Open();
             }
 
+            this.Id = (Int32)cmd.ExecuteScalar();
+            this.CreatedAt = createTime;
+
+            return this;
+
+        }
+        public Customer Update()
+        {
+            using (SqlConnection connection = DbUtilsConnection.GetDefaultConnection())
+            {
+                this.ExecuteUpdateCommand(connection.CreateCommand());
+            }
+
+            return this;
         }
 
-        public Customer Update()
+        public Customer Update(SqlTransaction transaction)
+        {
+            SqlCommand cmd = transaction.Connection.CreateCommand();
+            cmd.Transaction = transaction;
+            this.ExecuteUpdateCommand(cmd);
+            return this;
+        }
+
+        public Customer ExecuteUpdateCommand(SqlCommand cmd)
         {
             if (this.Id == 0)
             {
                 throw new Exception($"Id value is 0. Cannot continue with Update() method for {this.GetType().FullName}");
             }
 
-            using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+            string statement = $"UPDATE {DATABASE_TABLE_NAME} SET firstName=@firstName, lastName=@lastName, email=@email, createdAt=@createdAt WHERE id = @id;";
+            cmd.CommandText = statement;
+
+            SqlParameter param_firstName = cmd.CreateParameter();
+            param_firstName.ParameterName = "@firstName";
+            param_firstName.DbType = DbType.String;
+            if (this.FirstName != null)
             {
-                string statement = $"UPDATE {DATABASE_TABLE_NAME} SET firstName=@firstName, lastName=@lastName, email=@email, createdAt=@createdAt WHERE id = @id;";
-                SqlCommand cmd = connection.CreateCommand();
-                cmd.CommandText = statement;
-
-                SqlParameter param_firstName = cmd.CreateParameter();
-                param_firstName.ParameterName = "@firstName";
-                param_firstName.DbType = DbType.String;
-                if (this.FirstName != null)
-                {
-                    param_firstName.Value = this.FirstName;
-                }
-                else
-                {
-                    param_firstName.Value = DBNull.Value;
-                }
-                cmd.Parameters.Add(param_firstName);
-
-                SqlParameter param_lastName = cmd.CreateParameter();
-                param_lastName.ParameterName = "@lastName";
-                param_lastName.DbType = DbType.String;
-                if (this.LastName != null)
-                {
-                    param_lastName.Value = this.LastName;
-                }
-                else
-                {
-                    param_lastName.Value = DBNull.Value;
-                }
-                cmd.Parameters.Add(param_lastName);
-
-                SqlParameter param_email = cmd.CreateParameter();
-                param_email.ParameterName = "@email";
-                param_email.DbType = DbType.String;
-                param_email.Value = this.Email;
-                cmd.Parameters.Add(param_email);
-
-                connection.Open();
-                // EXECUTE A NON-QUERY STATEMENT IN T-SQL (DELETE)
-                int affectedRows = cmd.ExecuteNonQuery();
-
-                // WHY NOT USE if(affectedRows == 0) or : if(affectedRows <= 0) ?
-                if (!((affectedRows) > 0))
-                {
-                    throw new Exception($"Could not update {this.GetType().FullName}: no database entry found for ID# : {this.Id}");
-                }
-
-                return this;
+                param_firstName.Value = this.FirstName;
             }
+            else
+            {
+                param_firstName.Value = DBNull.Value;
+            }
+            cmd.Parameters.Add(param_firstName);
+
+            SqlParameter param_lastName = cmd.CreateParameter();
+            param_lastName.ParameterName = "@lastName";
+            param_lastName.DbType = DbType.String;
+            if (this.LastName != null)
+            {
+                param_lastName.Value = this.LastName;
+            }
+            else
+            {
+                param_lastName.Value = DBNull.Value;
+            }
+            cmd.Parameters.Add(param_lastName);
+
+            SqlParameter param_email = cmd.CreateParameter();
+            param_email.ParameterName = "@email";
+            param_email.DbType = DbType.String;
+            param_email.Value = this.Email;
+            cmd.Parameters.Add(param_email);
+
+            if (cmd.Connection.State != ConnectionState.Open)
+            {
+                cmd.Connection.Open();
+            }
+
+            // EXECUTE A NON-QUERY STATEMENT IN T-SQL (DELETE)
+            int affectedRows = cmd.ExecuteNonQuery();
+
+            if (!((affectedRows) > 0))
+            {
+                throw new Exception($"Could not update {this.GetType().FullName}: no database entry found for ID# : {this.Id}");
+            }
+
+            return this;
         }
     }
 }

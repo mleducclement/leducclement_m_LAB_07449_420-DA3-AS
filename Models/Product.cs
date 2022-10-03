@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using leducclement_m_LAB_07449_420_DA3_AS.Utils;
 
 namespace leducclement_m_LAB_07449_420_DA3_AS.Models
 {
@@ -18,7 +19,8 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
         private int Id { get; set; } = 0;
         public long GTINCode { get; set; }
         public int QtyInStock { get; set; }
-        public string Name {
+        public string Name
+        {
             get { return this._name; }
             set
             {
@@ -33,7 +35,8 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
         public DateTime CreatedAt { get; set; }
         public DateTime DeletedAt { get; set; }
 
-        public Product(int id) {
+        public Product(int id)
+        {
             this.Id = id;
         }
 
@@ -57,41 +60,73 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
 
         public void Delete()
         {
+            using (SqlConnection connection = DbUtilsConnection.GetDefaultConnection())
+            {
+                this.ExecuteDeleteCommand(connection.CreateCommand());
+            }
+        }
+
+        public void Delete(SqlTransaction transaction)
+        {
+            SqlCommand cmd = transaction.Connection.CreateCommand();
+            cmd.Transaction = transaction;
+            this.ExecuteDeleteCommand(cmd);
+        }
+
+        private void ExecuteDeleteCommand(SqlCommand cmd)
+        {
             if (this.Id == 0)
             {
                 throw new Exception($"Id value is 0. Cannot continue with Delete() method for {this.GetType().FullName}");
             }
 
             // USING ALLOWS TO CREATE A CONNECTION AND NOT WORRY ABOUT DESTROYING IT AFTERWARDS
-            using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+
+            // SQL STATEMENT TO DELETE ENTRY FROM DATABASE
+            string statement = $"DELETE FROM {DATABASE_TABLE_NAME} WHERE Id = @id;";
+            // SET TEXT OF SqlCommand INSTANCE TO THE statement STRING
+            cmd.CommandText = statement;
+
+            SqlParameter param_id = cmd.CreateParameter();
+            param_id.ParameterName = "@id";
+            param_id.DbType = DbType.Int32;
+            param_id.Value = this.Id;
+            cmd.Parameters.Add(param_id);
+
+            if (cmd.Connection.State != ConnectionState.Open)
             {
-                // SQL STATEMENT TO DELETE ENTRY FROM DATABASE
-                string statement = $"DELETE FROM {DATABASE_TABLE_NAME} WHERE Id = @id;";
-                // CREATE T-SQL REPRESENTATION IN C# as SqlCommand
-                SqlCommand cmd = connection.CreateCommand();
-                // SET TEXT OF SqlCommand INSTANCE TO THE statement STRING
-                cmd.CommandText = statement;
+                cmd.Connection.Open();
+            }
+            // EXECUTE A NON-QUERY STATEMENT IN T-SQL (DELETE)
+            int affectedRows = cmd.ExecuteNonQuery();
 
-                SqlParameter param_id = cmd.CreateParameter();
-                param_id.ParameterName = "@id";
-                param_id.DbType = DbType.Int32;
-                param_id.Value = this.Id;
-                cmd.Parameters.Add(param_id);
-
-                connection.Open();
-                // EXECUTE A NON-QUERY STATEMENT IN T-SQL (DELETE)
-                int affectedRows = cmd.ExecuteNonQuery();
-
-                // WHY NOT USE if(affectedRows == 0) or : if(affectedRows <= 0) ?
-                if (!((affectedRows) > 0))
-                {
-                    // No affected rows: no deletion occured -> row with matching Id not found
-                    throw new Exception($"Could not delete {this.GetType().FullName}: no database entry found for ID# : {this.Id}");
-                }
+            // WHY NOT USE if(affectedRows == 0) or : if(affectedRows <= 0) ?
+            if (!((affectedRows) > 0))
+            {
+                // No affected rows: no deletion occured -> row with matching Id not found
+                throw new Exception($"Could not delete {this.GetType().FullName}: no database entry found for ID# : {this.Id}");
             }
         }
 
         public Product GetById()
+        {
+            using (SqlConnection connection = DbUtilsConnection.GetDefaultConnection())
+            {
+                this.ExecuteGetByIdCommand(connection.CreateCommand());
+            }
+
+            return this;
+        }
+
+        public Product GetById(SqlTransaction transaction)
+        {
+            SqlCommand cmd = transaction.Connection.CreateCommand();
+            cmd.Transaction = transaction;
+            this.ExecuteGetByIdCommand(cmd);
+            return this;
+        }
+
+        private Product ExecuteGetByIdCommand(SqlCommand cmd)
         {
             if (this.Id == 0)
             {
@@ -101,7 +136,6 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
             using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
             {
                 string statement = $"SELECT FROM {DATABASE_TABLE_NAME} WHERE Id = @id;";
-                SqlCommand cmd = connection.CreateCommand();
                 cmd.CommandText = statement;
 
                 SqlParameter param_id = cmd.CreateParameter();
@@ -110,7 +144,10 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 param_id.Value = this.Id;
                 cmd.Parameters.Add(param_id);
 
-                connection.Open();
+                if (cmd.Connection.State != ConnectionState.Open)
+                {
+                    cmd.Connection.Open();
+                }
 
                 SqlDataReader reader = cmd.ExecuteReader();
 
@@ -122,7 +159,7 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                         {
                             this.GTINCode = reader.GetInt64(1);
                         }
-                            
+
                         this.QtyInStock = reader.GetInt32(2);
                         this.Name = reader.GetString(3);
 
@@ -149,143 +186,180 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
 
         public Product Insert()
         {
+            using (SqlConnection connection = DbUtilsConnection.GetDefaultConnection())
+            {
+                this.ExecuteInsertCommand(connection.CreateCommand());
+            }
+
+            return this;
+        }
+
+        public Product Insert(SqlTransaction transaction)
+        {
+            SqlCommand cmd = transaction.Connection.CreateCommand();
+            cmd.Transaction = transaction;
+            this.ExecuteInsertCommand(cmd);
+            return this;
+        }
+
+        private Product ExecuteInsertCommand(SqlCommand cmd)
+        {
             // WHY NOT REMOVE THE ID SETTER ALTOGETHER AND MAKE IT PREINITIALIZED VALUE 0 INSTEAD ?
             if (this.Id > 0)
             {
                 throw new Exception($"Id value is not 0. Cannot continue with Insert() method for {this.GetType().FullName}");
             }
 
-            using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+            DateTime createTime = DateTime.Now;
+
+            string statement = $"INSERT INTO {DATABASE_TABLE_NAME} (gtinCode, qtyInStock, name, description) VALUES (@gtinCode, @qtyInStock, @name, @description, @createdAt); SELECT CAST(SCOPE_IDENTITY() AS int);";
+            cmd.CommandText = statement;
+
+            SqlParameter param_gtinCode = cmd.CreateParameter();
+            param_gtinCode.ParameterName = "@gtinCode";
+            param_gtinCode.DbType = DbType.Int64;
+            if (this.GTINCode == 0L)
             {
-                DateTime createTime = DateTime.Now;
+                param_gtinCode.Value = DBNull.Value;
+            }
+            else
+            {
+                param_gtinCode.Value = this.GTINCode;
 
-                string statement = $"INSERT INTO {DATABASE_TABLE_NAME} (gtinCode, qtyInStock, name, description) VALUES (@gtinCode, @qtyInStock, @name, @description, @createdAt); SELECT CAST(SCOPE_IDENTITY() AS int);";
-                SqlCommand cmd = connection.CreateCommand();
-                cmd.CommandText = statement;
+            }
+            cmd.Parameters.Add(param_gtinCode);
 
-                SqlParameter param_gtinCode = cmd.CreateParameter();
-                param_gtinCode.ParameterName = "@gtinCode";
-                param_gtinCode.DbType = DbType.Int64;
-                if(this.GTINCode == 0L)
-                {
-                    param_gtinCode.Value = DBNull.Value;
-                }
-                else
-                {
-                    param_gtinCode.Value = this.GTINCode;
+            SqlParameter param_qtyInStock = cmd.CreateParameter();
+            param_qtyInStock.ParameterName = "@qtyInStock";
+            param_qtyInStock.DbType = DbType.Int32;
+            param_qtyInStock.Value = this.QtyInStock;
+            cmd.Parameters.Add(param_qtyInStock);
 
-                }
-                cmd.Parameters.Add(param_gtinCode);
+            SqlParameter param_name = cmd.CreateParameter();
+            param_name.ParameterName = "@name";
+            param_name.DbType = DbType.String;
+            param_name.Value = this.Name;
+            cmd.Parameters.Add(param_name);
 
-                SqlParameter param_qtyInStock = cmd.CreateParameter();
-                param_qtyInStock.ParameterName = "@qtyInStock";
-                param_qtyInStock.DbType = DbType.Int32;
-                param_qtyInStock.Value = this.QtyInStock;
-                cmd.Parameters.Add(param_qtyInStock);
-
-                SqlParameter param_name = cmd.CreateParameter();
-                param_name.ParameterName = "@name";
-                param_name.DbType = DbType.String;
-                param_name.Value = this.Name;
-                cmd.Parameters.Add(param_name);
-
-                SqlParameter param_description = cmd.CreateParameter();
-                param_description.ParameterName = "@description";
-                param_description.DbType = DbType.String;
-                if(String.IsNullOrEmpty(this.Description.Trim()))
-                {
-                    param_description.Value = DBNull.Value;
-                }
-                else
-                {
-                    param_description.Value = this.Description;
-                }
+            SqlParameter param_description = cmd.CreateParameter();
+            param_description.ParameterName = "@description";
+            param_description.DbType = DbType.String;
+            if (String.IsNullOrEmpty(this.Description.Trim()))
+            {
+                param_description.Value = DBNull.Value;
+            }
+            else
+            {
                 param_description.Value = this.Description;
-                cmd.Parameters.Add(param_description);
+            }
+            param_description.Value = this.Description;
+            cmd.Parameters.Add(param_description);
 
-                SqlParameter param_createdAt = cmd.CreateParameter();
-                param_createdAt.ParameterName = "@createdAt";
-                param_createdAt.DbType = DbType.DateTime;
-                param_createdAt.Value = createTime;
-                cmd.Parameters.Add(param_createdAt);
+            SqlParameter param_createdAt = cmd.CreateParameter();
+            param_createdAt.ParameterName = "@createdAt";
+            param_createdAt.DbType = DbType.DateTime;
+            param_createdAt.Value = createTime;
+            cmd.Parameters.Add(param_createdAt);
 
-                connection.Open();
-                this.Id = (Int32)cmd.ExecuteScalar();
-                this.CreatedAt = createTime;
-
-                return this;
+            if (cmd.Connection.State != ConnectionState.Open)
+            {
+                cmd.Connection.Open();
             }
 
+            this.Id = (Int32)cmd.ExecuteScalar();
+            this.CreatedAt = createTime;
+
+            return this;
         }
 
         public Product Update()
+        {
+            using (SqlConnection connection = DbUtilsConnection.GetDefaultConnection())
+            {
+                this.ExecuteUpdateCommand(connection.CreateCommand());
+            }
+
+            return this;
+        }
+
+        public Product Update(SqlTransaction transaction)
+        {
+            SqlCommand cmd = transaction.Connection.CreateCommand();
+            cmd.Transaction = transaction;
+            this.ExecuteUpdateCommand(cmd);
+            return this;
+        }
+
+        private Product ExecuteUpdateCommand(SqlCommand cmd)
         {
             if (this.Id == 0)
             {
                 throw new Exception($"Id value is 0. Cannot continue with Update() method for {this.GetType().FullName}");
             }
 
-            using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+
+            string statement = $"UPDATE {DATABASE_TABLE_NAME} SET gtinCode=@gtinCode, qtyInStock=@qtyInStock, name=@name, description=@description WHERE id=@id";
+            cmd.CommandText = statement;
+
+            SqlParameter param_id = cmd.CreateParameter();
+            param_id.ParameterName = "@id";
+            param_id.DbType = DbType.Int32;
+            param_id.Value = this.Id;
+            cmd.Parameters.Add(param_id);
+
+            SqlParameter param_gtinCode = cmd.CreateParameter();
+            param_gtinCode.ParameterName = "@gtinCode";
+            param_gtinCode.DbType = DbType.Int64;
+            if (this.GTINCode == 0L)
             {
-                string statement = $"UPDATE {DATABASE_TABLE_NAME} SET gtinCode=@gtinCode, qtyInStock=@qtyInStock, name=@name, description=@description WHERE id=@id";
-                SqlCommand cmd = connection.CreateCommand();
-                cmd.CommandText = statement;
-
-                SqlParameter param_id = cmd.CreateParameter();
-                param_id.ParameterName = "@id";
-                param_id.DbType = DbType.Int32;
-                param_id.Value = this.Id;
-                cmd.Parameters.Add(param_id);
-
-                SqlParameter param_gtinCode = cmd.CreateParameter();
-                param_gtinCode.ParameterName = "@gtinCode";
-                param_gtinCode.DbType = DbType.Int64;
-                if (this.GTINCode == 0L)
-                {
-                    param_gtinCode.Value = DBNull.Value;
-                }
-                else
-                {
-                    param_gtinCode.Value = this.GTINCode;
-
-                }
-                cmd.Parameters.Add(param_gtinCode);
-
-                SqlParameter param_qtyInStock = cmd.CreateParameter();
-                param_qtyInStock.ParameterName = "@qtyInStock";
-                param_qtyInStock.DbType = DbType.Int32;
-                param_qtyInStock.Value = this.QtyInStock;
-                cmd.Parameters.Add(param_qtyInStock);
-
-                SqlParameter param_name = cmd.CreateParameter();
-                param_name.ParameterName = "@name";
-                param_name.DbType = DbType.String;
-                param_name.Value = this.Name;
-                cmd.Parameters.Add(param_name);
-
-                SqlParameter param_description = cmd.CreateParameter();
-                param_description.ParameterName = "@description";
-                param_description.DbType = DbType.String;
-                if (String.IsNullOrEmpty(this.Description.Trim()))
-                {
-                    param_description.Value = DBNull.Value;
-                }
-                else
-                {
-                    param_description.Value = this.Description;
-                }
-                param_description.Value = this.Description;
-                cmd.Parameters.Add(param_description);
-
-                connection.Open();
-                int affectedRows = cmd.ExecuteNonQuery();
-                if(!(affectedRows > 0))
-                {
-                    throw new Exception($"Could not update {this.GetType().FullName}: no database entry found for ID# : {this.Id}");
-                }
-
-                return this;
+                param_gtinCode.Value = DBNull.Value;
             }
+            else
+            {
+                param_gtinCode.Value = this.GTINCode;
+
+            }
+            cmd.Parameters.Add(param_gtinCode);
+
+            SqlParameter param_qtyInStock = cmd.CreateParameter();
+            param_qtyInStock.ParameterName = "@qtyInStock";
+            param_qtyInStock.DbType = DbType.Int32;
+            param_qtyInStock.Value = this.QtyInStock;
+            cmd.Parameters.Add(param_qtyInStock);
+
+            SqlParameter param_name = cmd.CreateParameter();
+            param_name.ParameterName = "@name";
+            param_name.DbType = DbType.String;
+            param_name.Value = this.Name;
+            cmd.Parameters.Add(param_name);
+
+            SqlParameter param_description = cmd.CreateParameter();
+            param_description.ParameterName = "@description";
+            param_description.DbType = DbType.String;
+            if (String.IsNullOrEmpty(this.Description.Trim()))
+            {
+                param_description.Value = DBNull.Value;
+            }
+            else
+            {
+                param_description.Value = this.Description;
+            }
+            param_description.Value = this.Description;
+            cmd.Parameters.Add(param_description);
+
+            if (cmd.Connection.State != ConnectionState.Open)
+            {
+                cmd.Connection.Open();
+            }
+
+            int affectedRows = cmd.ExecuteNonQuery();
+            if (!(affectedRows > 0))
+            {
+                throw new Exception($"Could not update {this.GetType().FullName}: no database entry found for ID# : {this.Id}");
+            }
+
+            return this;
+
         }
     }
 }

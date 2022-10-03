@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using leducclement_m_LAB_07449_420_DA3_AS.Utils;
 
 namespace leducclement_m_LAB_07449_420_DA3_AS.Models
 {
@@ -24,120 +25,178 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
 
         public static CartProduct GetByIds(int cartId, int productId)
         {
-            using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+            using (SqlConnection connection = DbUtilsConnection.GetDefaultConnection())
             {
-                string statement = $"SELECT FROM {DATABASE_TABLE_NAME} WHERE cartId = @cartId AND productId = @productId;";
-                SqlCommand cmd = connection.CreateCommand();
-                cmd.CommandText = statement;
-
-                SqlParameter param_cartId = cmd.CreateParameter();
-                param_cartId.ParameterName = "@cartId";
-                param_cartId.DbType = DbType.Int32;
-                param_cartId.Value = cartId;
-                cmd.Parameters.Add(param_cartId);
-
-                SqlParameter param_productId = cmd.CreateParameter();
-                param_productId.ParameterName = "@productId";
-                param_productId.DbType = DbType.Int32;
-                param_productId.Value = cartId;
-                cmd.Parameters.Add(param_productId);
-
-                connection.Open();
-
-                SqlDataReader reader = cmd.ExecuteReader();
-
-                if (reader.HasRows)
-                {
-                    while (reader.Read())
-                    {
-                        int productQuantity = reader.GetInt32(2);
-                    }
-                    return new CartProduct(cartId, productId);
-                }
-                else
-                {
-                    throw new Exception($"No entry exist in data base for cartId {cartId} and productId = {productId}");
-                }
+                return ExecuteGetByIdsCommand(cartId, productId, connection.CreateCommand());
             }
         }
 
-        public static List<CartProduct> GetAllByCartId(int cartId)
+        public static CartProduct GetByIds(int cartId, int productId, SqlTransaction transaction)
+        {
+            SqlCommand cmd = transaction.Connection.CreateCommand();
+            cmd.Transaction = transaction;
+            return ExecuteGetByIdsCommand(cartId, productId, cmd);
+        }
+
+        private static CartProduct ExecuteGetByIdsCommand(int cartId, int productId, SqlCommand cmd)
+        {
+            string statement = $"SELECT FROM {DATABASE_TABLE_NAME} WHERE cartId = @cartId AND productId = @productId;";
+            cmd.CommandText = statement;
+
+            SqlParameter param_cartId = cmd.CreateParameter();
+            param_cartId.ParameterName = "@cartId";
+            param_cartId.DbType = DbType.Int32;
+            param_cartId.Value = cartId;
+            cmd.Parameters.Add(param_cartId);
+
+            SqlParameter param_productId = cmd.CreateParameter();
+            param_productId.ParameterName = "@productId";
+            param_productId.DbType = DbType.Int32;
+            param_productId.Value = cartId;
+            cmd.Parameters.Add(param_productId);
+
+            if (cmd.Connection.State != ConnectionState.Open)
+            {
+                cmd.Connection.Open();
+            }
+
+            SqlDataReader reader = cmd.ExecuteReader();
+
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    int ProductQuantity = reader.GetInt32(2);
+                }
+                return new CartProduct(cartId, productId);
+            }
+            else
+            {
+                throw new Exception($"No entry exist in data base for cartId {cartId} and productId = {productId}");
+            }
+        }
+
+        public static List<CartProduct> GetAllByCartId(int cartId, int productId)
+        {
+            using (SqlConnection connection = DbUtilsConnection.GetDefaultConnection())
+            {
+                return ExecuteGetAllByCartIdCommand(cartId, connection.CreateCommand());
+            }
+        }
+
+        public static List<CartProduct> GetAllByCartId(int cartId, int productId, SqlTransaction transaction)
+        {
+            SqlCommand cmd = transaction.Connection.CreateCommand();
+            cmd.Transaction = transaction;
+            return ExecuteGetAllByCartIdCommand(cartId, cmd);
+        }
+
+        private static List<CartProduct> ExecuteGetAllByCartIdCommand(int cartId, SqlCommand cmd)
         {
             List<CartProduct> cartProducts = new List<CartProduct>();
 
-            using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+
+            string statement = $"SELECT FROM {DATABASE_TABLE_NAME} WHERE cartId = @cartId";
+
+            cmd.CommandText = statement;
+
+            SqlParameter param_cartId = cmd.CreateParameter();
+            param_cartId.ParameterName = "@cartId";
+            param_cartId.DbType = DbType.Int32;
+            param_cartId.Value = cartId;
+            cmd.Parameters.Add(param_cartId);
+
+            if (cmd.Connection.State != ConnectionState.Open)
             {
-                string statement = $"SELECT FROM {DATABASE_TABLE_NAME} WHERE cartId = @cartId";
-                SqlCommand cmd = connection.CreateCommand();
-                cmd.CommandText = statement;
+                cmd.Connection.Open();
+            }
 
-                SqlParameter param_cartId = cmd.CreateParameter();
-                param_cartId.ParameterName = "@cartId";
-                param_cartId.DbType = DbType.Int32;
-                param_cartId.Value = cartId;
-                cmd.Parameters.Add(param_cartId);
+            SqlDataReader reader = cmd.ExecuteReader();
 
-                connection.Open();
-
-                SqlDataReader reader = cmd.ExecuteReader();
-
-                if (reader.HasRows)
+            if (reader.HasRows)
+            {
+                while (reader.Read())
                 {
-                    while (reader.Read())
-                    {
-                        int productId = reader.GetInt32(1);
-                        int productQuantity = reader.GetInt32(2);
-                        cartProducts.Add(new CartProduct(cartId, productId, productQuantity));
-                    }
+                    int productId = reader.GetInt32(1);
+                    int productQuantity = reader.GetInt32(2);
+                    cartProducts.Add(new CartProduct(cartId, productId, productQuantity));
                 }
-                else
-                {
-                    throw new Exception($"No entry exist in data base for cartId {cartId}");
-                }
+            }
+            else
+            {
+                throw new Exception($"No entry exist in data base for cartId {cartId}");
             }
 
             return cartProducts;
         }
+        public static List<CartProduct> GetAllByProductId(int productId)
+        {
+            using (SqlConnection connection = DbUtilsConnection.GetDefaultConnection())
+            {
+                return ExecuteGetAllbyProductIdCommand(productId, connection.CreateCommand());
+            }
+        }
 
-        public static List<CartProduct> GetAllbyProductId(int productId)
+        public static List<CartProduct> GetAllByProductId(int productId, SqlTransaction transaction)
+        {
+            SqlCommand cmd = transaction.Connection.CreateCommand();
+            cmd.Transaction = transaction;
+            return ExecuteGetAllbyProductIdCommand(productId, cmd);
+        }
+
+        private static List<CartProduct> ExecuteGetAllbyProductIdCommand(int productId, SqlCommand cmd)
         {
             List<CartProduct> cartProducts = new List<CartProduct>();
 
-            using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+            string statement = $"SELECT FROM {DATABASE_TABLE_NAME} WHERE cartId = @productId";
+            cmd.CommandText = statement;
+
+            SqlParameter param_productId = cmd.CreateParameter();
+            param_productId.ParameterName = "@productId";
+            param_productId.DbType = DbType.Int32;
+            param_productId.Value = productId;
+            cmd.Parameters.Add(param_productId);
+
+            if (cmd.Connection.State != ConnectionState.Open)
             {
-                string statement = $"SELECT FROM {DATABASE_TABLE_NAME} WHERE cartId = @productId";
-                SqlCommand cmd = connection.CreateCommand();
-                cmd.CommandText = statement;
+                cmd.Connection.Open();
+            }
 
-                SqlParameter param_productId = cmd.CreateParameter();
-                param_productId.ParameterName = "@productId";
-                param_productId.DbType = DbType.Int32;
-                param_productId.Value = productId;
-                cmd.Parameters.Add(param_productId);
+            SqlDataReader reader = cmd.ExecuteReader();
 
-                connection.Open();
-
-                SqlDataReader reader = cmd.ExecuteReader();
-
-                if (reader.HasRows)
+            if (reader.HasRows)
+            {
+                while (reader.Read())
                 {
-                    while (reader.Read())
-                    {
-                        int cartId = reader.GetInt32(0);
-                        int productQuantity = reader.GetInt32(2);
-                        cartProducts.Add(new CartProduct(cartId, productId, productQuantity));
-                    }
+                    int cartId = reader.GetInt32(0);
+                    int productQuantity = reader.GetInt32(2);
+                    cartProducts.Add(new CartProduct(cartId, productId, productQuantity));
                 }
-                else
-                {
-                    throw new Exception($"No entry exist in data base for productId {productId}");
-                }
+            }
+            else
+            {
+                throw new Exception($"No entry exist in data base for productId {productId}");
             }
 
             return cartProducts;
         }
 
         public CartProduct Insert()
+        {
+            using (SqlConnection connection = DbUtilsConnection.GetDefaultConnection())
+            {
+                return ExecuteInsertCommand(connection.CreateCommand());
+            }
+        }
+
+        public CartProduct Insert(SqlTransaction transaction)
+        {
+            SqlCommand cmd = transaction.Connection.CreateCommand();
+            cmd.Transaction = transaction;
+            return ExecuteInsertCommand(cmd);
+        }
+
+        private CartProduct ExecuteInsertCommand(SqlCommand cmd)
         {
             if (CartId == 0)
             {
@@ -148,38 +207,55 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 throw new Exception($"ProductId value is 0. Cannot continue with Insert() method for {this.GetType().FullName}");
             }
 
-            using(SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+
+            string statement = $"INSERT INTO {DATABASE_TABLE_NAME} (cartId, productId, productQuantity) VALUES (@cartId, @productId, @productQuantity)";
+
+            cmd.CommandText = statement;
+
+            SqlParameter param_cartId = cmd.CreateParameter();
+            param_cartId.ParameterName = "@cartId";
+            param_cartId.DbType = DbType.Int32;
+            param_cartId.Value = this.CartId;
+            cmd.Parameters.Add(param_cartId);
+
+            SqlParameter param_productId = cmd.CreateParameter();
+            param_productId.ParameterName = "@productId";
+            param_productId.DbType = DbType.Int32;
+            param_productId.Value = this.CartId;
+            cmd.Parameters.Add(param_productId);
+
+            SqlParameter param_productQuantity = cmd.CreateParameter();
+            param_productQuantity.ParameterName = "@productQuantity";
+            param_productQuantity.DbType = DbType.Int32;
+            param_productQuantity.Value = this.CartId;
+            cmd.Parameters.Add(param_productQuantity);
+
+            if (cmd.Connection.State != ConnectionState.Open)
             {
-                string statement = $"INSERT INTO {DATABASE_TABLE_NAME} (cartId, productId, productQuantity) VALUES (@cartId, @productId, @productQuantity)";
-                SqlCommand cmd = connection.CreateCommand();
-                cmd.CommandText = statement;
+                cmd.Connection.Open();
+            }
 
-                SqlParameter param_cartId = cmd.CreateParameter();
-                param_cartId.ParameterName = "@cartId";
-                param_cartId.DbType = DbType.Int32;
-                param_cartId.Value = this.CartId;
-                cmd.Parameters.Add(param_cartId);
+            cmd.ExecuteNonQuery();
 
-                SqlParameter param_productId = cmd.CreateParameter();
-                param_productId.ParameterName = "@productId";
-                param_productId.DbType = DbType.Int32;
-                param_productId.Value = this.CartId;
-                cmd.Parameters.Add(param_productId);
+            return this;
 
-                SqlParameter param_productQuantity = cmd.CreateParameter();
-                param_productQuantity.ParameterName = "@productQuantity";
-                param_productQuantity.DbType = DbType.Int32;
-                param_productQuantity.Value = this.CartId;
-                cmd.Parameters.Add(param_productQuantity);
-
-                connection.Open();
-                cmd.ExecuteNonQuery();
-
-                return this;
+        }
+        public CartProduct Update()
+        {
+            using (SqlConnection connection = DbUtilsConnection.GetDefaultConnection())
+            {
+                return ExecuteUpdateCommand(connection.CreateCommand());
             }
         }
 
-        public CartProduct Update()
+        public CartProduct Update(SqlTransaction transaction)
+        {
+            SqlCommand cmd = transaction.Connection.CreateCommand();
+            cmd.Transaction = transaction;
+            return ExecuteUpdateCommand(cmd);
+        }
+
+        private CartProduct ExecuteUpdateCommand(SqlCommand cmd)
         {
             if (CartId == 0)
             {
@@ -190,43 +266,59 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 throw new Exception($"ProductId value is 0. Cannot continue with Update() method for {this.GetType().FullName}");
             }
 
-            using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+            string statement = $"UPDATE {DATABASE_TABLE_NAME} SET productQuantity=@productQuantity WHERE cartId = @cartId AND productId = @productId;";
+            cmd.CommandText = statement;
+
+            SqlParameter param_cartId = cmd.CreateParameter();
+            param_cartId.ParameterName = "@cartId";
+            param_cartId.DbType = DbType.String;
+            param_cartId.Value = this.CartId;
+            cmd.Parameters.Add(param_cartId);
+
+            SqlParameter param_productId = cmd.CreateParameter();
+            param_productId.ParameterName = "@productId";
+            param_productId.DbType = DbType.String;
+            param_productId.Value = this.ProductId;
+            cmd.Parameters.Add(param_productId);
+
+            SqlParameter param_productQuantity = cmd.CreateParameter();
+            param_productQuantity.ParameterName = "@productQuantity";
+            param_productQuantity.DbType = DbType.String;
+            param_productQuantity.Value = this.ProductQuantity;
+            cmd.Parameters.Add(param_productQuantity);
+
+            if (cmd.Connection.State != ConnectionState.Open)
             {
-                string statement = $"UPDATE {DATABASE_TABLE_NAME} SET productQuantity=@productQuantity WHERE cartId = @cartId AND productId = @productId;";
-                SqlCommand cmd = connection.CreateCommand();
-                cmd.CommandText = statement;
-
-                SqlParameter param_cartId = cmd.CreateParameter();
-                param_cartId.ParameterName = "@cartId";
-                param_cartId.DbType = DbType.String;
-                param_cartId.Value = this.CartId;
-                cmd.Parameters.Add(param_cartId);
-
-                SqlParameter param_productId = cmd.CreateParameter();
-                param_productId.ParameterName = "@productId";
-                param_productId.DbType = DbType.String;
-                param_productId.Value = this.ProductId;
-                cmd.Parameters.Add(param_productId);
-
-                SqlParameter param_productQuantity = cmd.CreateParameter();
-                param_productQuantity.ParameterName = "@productQuantity";
-                param_productQuantity.DbType = DbType.String;
-                param_productQuantity.Value = this.ProductQuantity;
-                cmd.Parameters.Add(param_productQuantity);
-
-                connection.Open();
-                // EXECUTE A NON-QUERY STATEMENT IN T-SQL (DELETE)
-                int affectedRows = cmd.ExecuteNonQuery();
-
-                if (affectedRows <= 0)
-                {
-                    throw new Exception($"Could not update {this.GetType().FullName}: no database entry found for cartId : {this.CartId} and productId : {this.ProductId}");
-                }
-                return this;
+                cmd.Connection.Open();
             }
+
+            // EXECUTE A NON-QUERY STATEMENT IN T-SQL (DELETE)
+            int affectedRows = cmd.ExecuteNonQuery();
+
+            if (affectedRows <= 0)
+            {
+                throw new Exception($"Could not update {this.GetType().FullName}: no database entry found for cartId : {this.CartId} and productId : {this.ProductId}");
+            }
+            return this;
+
         }
 
         public void Delete()
+        {
+            using (SqlConnection connection = DbUtilsConnection.GetDefaultConnection())
+            {
+                ExecuteDeleteCommand(connection.CreateCommand());
+            }
+        }
+
+        public void Delete(SqlTransaction transaction)
+        {
+            SqlCommand cmd = transaction.Connection.CreateCommand();
+            cmd.Transaction = transaction;
+            ExecuteDeleteCommand(cmd);
+        }
+
+        private void ExecuteDeleteCommand(SqlCommand cmd)
         {
             if (CartId == 0)
             {
@@ -237,33 +329,35 @@ namespace leducclement_m_LAB_07449_420_DA3_AS.Models
                 throw new Exception($"ProductId value is 0. Cannot continue with Delete() method for {this.GetType().FullName}");
             }
 
-            using (SqlConnection connection = Utils.DbUtilsConnection.GetDefaultConnection())
+
+            string statement = $"DELETE {DATABASE_TABLE_NAME} WHERE cartId = @cartId AND productId = @productId;";
+            cmd.CommandText = statement;
+
+            SqlParameter param_cartId = cmd.CreateParameter();
+            param_cartId.ParameterName = "@cartId";
+            param_cartId.DbType = DbType.String;
+            param_cartId.Value = this.CartId;
+            cmd.Parameters.Add(param_cartId);
+
+            SqlParameter param_productId = cmd.CreateParameter();
+            param_productId.ParameterName = "@productId";
+            param_productId.DbType = DbType.String;
+            param_productId.Value = this.ProductId;
+            cmd.Parameters.Add(param_productId);
+
+            if (cmd.Connection.State != ConnectionState.Open)
             {
-                string statement = $"DELETE {DATABASE_TABLE_NAME} WHERE cartId = @cartId AND productId = @productId;";
-                SqlCommand cmd = connection.CreateCommand();
-                cmd.CommandText = statement;
-
-                SqlParameter param_cartId = cmd.CreateParameter();
-                param_cartId.ParameterName = "@cartId";
-                param_cartId.DbType = DbType.String;
-                param_cartId.Value = this.CartId;
-                cmd.Parameters.Add(param_cartId);
-
-                SqlParameter param_productId = cmd.CreateParameter();
-                param_productId.ParameterName = "@productId";
-                param_productId.DbType = DbType.String;
-                param_productId.Value = this.ProductId;
-                cmd.Parameters.Add(param_productId);
-
-                connection.Open();
-                // EXECUTE A NON-QUERY STATEMENT IN T-SQL (DELETE)
-                int affectedRows = cmd.ExecuteNonQuery();
-
-                if (affectedRows <= 0)
-                {
-                    throw new Exception($"Could not delete {this.GetType().FullName}: no database entry found for cartId : {this.CartId} and productId : {this.ProductId}");
-                }
+                cmd.Connection.Open();
             }
+
+            // EXECUTE A NON-QUERY STATEMENT IN T-SQL (DELETE)
+            int affectedRows = cmd.ExecuteNonQuery();
+
+            if (affectedRows <= 0)
+            {
+                throw new Exception($"Could not delete {this.GetType().FullName}: no database entry found for cartId : {this.CartId} and productId : {this.ProductId}");
+            }
+
         }
     }
 }
